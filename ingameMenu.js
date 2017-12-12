@@ -57,6 +57,28 @@ var menu =
                 {
                 "type": "text",
                 "font": "helvetiker_regular",
+                "name": "text1",
+                "text": "Glitch",
+                "size": 1,
+                "translate": [0, 0, 0],
+                "userData":
+                    {
+                        "scripts": ["selectRender"],
+                        "select": false,
+                        "render": "glitchPassRenderer"
+                    },
+
+                "material":
+                    {
+                        "type": "meshPhongMaterial",
+                        "name": "sm2",
+                        "color": [1.0, 0.5, 0.1],
+                        "specular": [1.0, 0.5, 0.5],
+                    }
+            },
+                {
+                "type": "text",
+                "font": "helvetiker_regular",
                 "name": "text2",
                 "text": "Resume",
                 "size": 1,

@@ -25,12 +25,32 @@
 <script src="endlessData.js"></script>
 <script src="startMenu.js"></script>
 <script src="ingameMenu.js"></script>
+<script src="../threejs/examples/js/loaders/OBJLoader.js"></script>
+<script src="../threejs/examples/js/shaders/CopyShader.js"></script>
+<script src="../threejs/examples/js/shaders/DigitalGlitch.js"></script>
+<script src="../threejs/examples/js/shaders/DotScreenShader.js"></script>
+<script src="../threejs/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="../threejs/examples/js/postprocessing/RenderPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/DotScreenPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/GlitchPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/ShaderPass.js"></script>
+
 
 
 <!-- DEFINE LEFT DIV TAG - FOR DEBUG PRINTOUTS -->
 <div id="debugContainer">
 <pre id="debug"></pre>
 </div>
+
+<audio id="background">
+	<source src="rfm.m4a" type="audio/aac">
+</audio>
+<audio id="hit">
+	<source src="lnd.m4a" type="audio/aac">
+</audio>
+<audio id="jump">
+	<source src="jmp.m4a" type="audio/aac">
+</audio>
 
 <!-- MAKE CANVAS AND OTHER STARTING ELEMENTS  -->
 <center>
@@ -48,13 +68,21 @@
 var boxGeo = new THREE.BoxGeometry(2,2,2);
 var boxMat = new THREE.MeshLambertMaterial();
 boxMat.color = new THREE.Color(1,0,0);
-var nex = 0;
+var nex = 3;
 var zs = 0;
 var xs = 0;
 var ys = 0;
 var x = 0;
 var score = 0;
 var scenes = {};
+var fall = false;
+var background = document.getElementById("background");
+background.loop = true;
+var jump = document.getElementById("jump");
+var land = document.getElementById("hit");
+var currentRender = "defaultRenderer";
+
+var hole = .2;
 
 window.onload = function()
 {
@@ -67,25 +95,127 @@ window.onload = function()
 
 	initEngine(canvas);
 
-	// Set up any event-based input for the current gameState
+	// Set up any event-based input for th0e current gameState
 	gameState.onMouseMove = onMouseMove;
 	gameState.onMouseDown = onMouseDown;
 	gameState.onClick = onClick;
 	gameState.onKeyDown = onKeyDown;
 	gameState.onKeyUp = onKeyUp;
 	gameState.score = 0;
+
 	// Parse level0 (into a Three.js scene) and star the game loop
 	parseScene(level0); // upfront loaded Javscript object
 	//loadScene("scene0a.json"); // asynchronous loading of JSON
 	scenes["level0"] = gameState.scene;
 	scenes["level1"] = parseSceneRtn(level1);
 	scenes["menu"] = parseSceneRtn(menu);
+    createRenderer();
 	startGameLoop();
 }
 
 
 
 // Data Scripts and Controllers //
+var movement = function(sceneNode)
+{
+    if (!gameState.lost) {
+        var speed = .2
+
+        var pressedKeys = engine.pressedKeys;
+        if (pressedKeys[87] !== undefined) {
+            //up
+            if (!fall && ys == 0) {
+                ys = 1;
+                jump.play();
+                fall = true;
+            }
+        }
+        if (pressedKeys[83] !== undefined) {
+            //down
+        }
+        if (pressedKeys[68] !== undefined) {
+            //left
+			var test = checkF(sceneNode);
+			if (test) {
+                if (test[0].distance > .75 || (test[0].object.position.y - sceneNode.position.y) <= -1) {
+                    debug(test[0].distance);
+                    sceneNode.position.x += speed;
+                }
+            } else {
+                sceneNode.position.x += speed;
+            }
+        }
+        if (pressedKeys[65] !== undefined) {
+            //right
+            sceneNode.position.x -= speed;
+        }
+        if (fall) {
+
+        }
+        sceneNode.position.y += ys;
+    }
+}
+
+var follow = function (sceneNode) {
+    var target =  gameState.scene.getObjectByName(sceneNode.userData.target, true);
+    var offset = sceneNode.userData.offset || 0;
+    var llim = 0
+	var ulim = 5;
+	if (target.position.y > llim && target.position.y < ulim) {
+        sceneNode.position.y = target.position.y + offset;
+    }
+    sceneNode.position.x = target.position.x;
+
+}
+function particleScript(sceneNode)
+{
+    var speed = 0.1;
+    var children = sceneNode.children;
+    var globe = gameState.scene.getObjectByName("Player", false);
+
+    if (children.length < 400) {
+        var p = children[0];
+        var q = p.clone();
+        children.push(q);
+
+        // set random location and velocity
+        q.userData.life = Math.random() * 200;
+
+        q.position.x = globe.position.x;
+        q.position.y = globe.position.y;
+        q.position.z = globe.position.z;
+
+        q.userData.vx = speed * (Math.random() + Math.random() - 1.0);
+        q.userData.vy = speed * (Math.random() + Math.random() - 1.0);
+        q.userData.vz = speed * (Math.random() + Math.random() - 1.0);
+
+        q.material = p.material.clone();
+
+    } else {
+        sceneNode.children = {}
+	}
+
+    for (var i=0; i<children.length; i++) {
+        var q = children[i];
+        q.position.x += q.userData.vx;
+        q.position.y += q.userData.vy;
+        q.position.z += q.userData.vz;
+
+        q.userData.vx *= 0.99;
+        q.userData.vy *= 0.99;
+        q.userData.vz *= 0.99;
+
+        q.userData.life--;
+        if (q.userData.life <= 0) {
+            q.userData.life = Math.random() * 100;
+            //q.position.x = globe.position.x + Math.random() - 0.5;
+            //q.position.y = globe.position.y + Math.random() - 0.5;
+            //q.position.z = globe.position.z + Math.random() - 0.5;
+            q.material.color.g = q.userData.life * 0.01;
+        }
+    }
+}
+
 var select = function(sceneNode) {
     if (sceneNode.userData["select"] == true) {
         var sScene = sceneNode.userData["scene"];
@@ -94,18 +224,56 @@ var select = function(sceneNode) {
 		changeScene(sScene);
     }
 }
+
+var selectRender = function(sceneNode) {
+    if (sceneNode.userData["select"] == true) {
+        var sScene = sceneNode.userData["render"];
+        debug(sScene);
+        sceneNode.userData["select"] = false;
+        changeRender(sScene);
+    }
+}
+
+var gravity = function(sceneNode) {
+    var post = checkPost(sceneNode);
+    if (post) {
+        if (post[0].distance >= 1) {
+            if (ys > -.5) {
+                fall = true;
+                if(ys > 1){
+                    ys -= 1;
+				}
+                ys = ys - .05;
+            }
+        } else if (post[0].distance < 1 && (post[0].object.geometry.type ==  "BoxGeometry" || post[0].object.geometry.type == "Cube") ){
+            if (fall){
+                land.play();
+			}
+            fall = false;
+            ys = 0;
+            sceneNode.position.y = post[0].object.position.y + 1;
+            debug(post[0].distance);
+		} else if(post[0].distance == 1) {
+            ys = 0;
+		}
+    } else {
+        if (ys > -.5) {
+            fall = true;
+            if(ys > 1){
+                ys -= 1;
+            }
+            ys = ys - .1;
+        }
+	}
+}
+
 var sceneControl = function(node) {
     if (!gameState.lost) {
-        var player = gameState.scene.getObjectByName("Player", true);
-        var cam = gameState.scene.getObjectByName("camera1", true);
-        var background = gameState.scene.getObjectByName("theCube", true);
-        player.position.x = player.position.x + xs;
-        cam.position.x = cam.position.x + xs;
-        player.position.y = player.position.y + ys;
-        cam.position.y = cam.position.y + ys;
-        background.position.x = background.position.x + xs;
-
-        if (player.position.x >= nex - 4) {
+		var player = gameState.scene.getObjectByName("Player", true);
+		if (player.position.y < -20){
+		    gameState.lost = true;
+		}
+        if (player.position.x >= nex - 15) {
             newRandom();
         }
         checkPost(player);
@@ -172,7 +340,10 @@ var onKeyDown = function(event)
         xs = .1;
     } else if (key == 38) {
         //up
-        ys = 1
+		if (ys == 0 && !fall) {
+		    fall = true;
+            ys = 1
+        }
     } else if (key == 40) {
         //down
     } else if (key == 46) {
@@ -183,6 +354,9 @@ var onKeyDown = function(event)
 
 var changeScene = function(level) {
     debug(level);
+    if(level == "level1") {
+        background.play();
+	}
     if (scenes[level]) {
         gameState.scene = scenes[level];
 	} else {
@@ -192,7 +366,7 @@ var changeScene = function(level) {
 
 	debug(scenes[level].userData.camera);
     gameState.camera = gameState.scene.getObjectByName(scenes[level].userData.camera, true);
-
+    createRenderer();
 }
 
 //Raycast Input//
@@ -227,25 +401,32 @@ var rayCastSelect = function(clientX, clientY, canvas, camera, objects)
 
 var checkPost = function(P) {
        var pv = new THREE.Vector3(P.position.x, P.position.y, P.position.z);
-            var ray = new THREE.Raycaster(pv, new THREE.Vector3(0,0,1));
+            var ray = new THREE.Raycaster(pv, new THREE.Vector3(0,-1,0));
             var inter = ray.intersectObjects(gameState.scene.children);
             if (inter.length > 0) {
-                if (inter[0].distance < 3 && inter[0].object.id != "13" && inter[0].object.id != "7" && inter[0].object.id != "22" && inter[0].object.id != "14") {
-                    //gameState.lost = true;
+               		return inter;
                 }
         }
+var checkF = function(P) {
+    var pv = new THREE.Vector3(P.position.x, P.position.y, P.position.z);
+    var ray = new THREE.Raycaster(pv, new THREE.Vector3(1,0,0));
+    var inter = ray.intersectObjects(gameState.scene.children);
+    if (inter.length > 0) {
+        return inter;
+    }
 }
-
 // Generation //
 
 var newRandom = function() {
     var scene = gameState.scene;
     var center = scene.getObjectByName("Player", true);
     var z = 0;
-    var y = Math.round(center.position.y) - (Math.round(Math.random() * 4) - 2);
-    var x = center.position.x + 5;
-    nex = x + 1;
-        newObj(x,y,z,1,1,1);
+    var y =  Math.round(Math.random() * 4) - 2;
+    var x = nex;
+    nex = x + 1.95;
+    if (hole < Math.random()) {
+        newObj(x, y, z, 1, 1, 1);
+    }
 }
 
 var newObj = function(x,y,z,tx,ty,tz){
@@ -256,7 +437,47 @@ var newObj = function(x,y,z,tx,ty,tz){
 	newObj.position.z = z;
 	newObj.scale.set(tx,ty,tz);
 }
+// Renderers //
 
+var createRenderer = function()
+{
+    var defaultRenderer = engine.renderers["defaultRenderer"];
+    var composer = new THREE.EffectComposer(defaultRenderer);
+
+    var renderPass = new THREE.RenderPass(gameState.scene, gameState.camera);
+    var glitchPass = new THREE.GlitchPass();
+    glitchPass.renderToScreen = true;
+
+    composer.addPass(renderPass);
+    composer.addPass(glitchPass);
+
+    engine.renderers["glitchPassRenderer"] = composer;
+    var composer1 = new THREE.EffectComposer(defaultRenderer);
+
+    var renderPass1 = new THREE.RenderPass(gameState.scene, gameState.camera);
+    var dt = new THREE.DotScreenPass();
+    glitchPass.renderToScreen = true;
+
+    composer.addPass(renderPass1);
+    composer.addPass(dt);
+    engine.renderers["SSAOPassRenderer"] = composer1
+	gameState.renderer = engine.renderers[currentRender];
+}
+
+var changeRender = function(renderer)
+{
+    var defaultRenderer = engine.renderers["defaultRenderer"];
+    var newRenderer = engine.renderers[renderer];
+
+    if (gameState.renderer == defaultRenderer) {
+        gameState.renderer = newRenderer;
+        currentRender = renderer;
+    }
+    else {
+        gameState.renderer = defaultRenderer;
+        currentRender = "defaultRenderer";
+    }
+}
 </script>
 
 </body>
