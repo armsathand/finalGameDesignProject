@@ -432,6 +432,11 @@ function parseScene(jsonParseTree)
 	parseSceneNode(jsonParseTree, scene);
 	gameState.scene = scene;
 }
+function parseSceneRtn(jsonParseTree) {
+    var scene = new THREE.Scene();
+    parseSceneNode(jsonParseTree, scene);
+    return scene
+}
 
 //----------------------------------------------------------------------//
 // THE MAIN RECURSIVE FUNCTION OF THE PARSER.

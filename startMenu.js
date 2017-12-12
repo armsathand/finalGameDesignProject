@@ -53,7 +53,7 @@ var level0 = {
 		{
 			"scripts": ["select"],
 			"select": false,
-			"text": "Click!"
+			"scene": "level1"
 		},
 		
 		"material":
@@ -75,7 +75,7 @@ var level0 = {
             {
                 "scripts": ["select"],
                 "select": false,
-                "text": "Click!"
+                "scene": "level1"
             },
 
         "material":

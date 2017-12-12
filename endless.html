@@ -9,7 +9,7 @@
 	    canvas { background-color: #000044; }
 	    #debugContainer { color: #FFFFFF; position: absolute; z-index: 100;}
     </style>
-    <title>Finale</title>
+    <title>Finale Endless</title>
 </head>
 
 <!-- ==================================================================== -->
@@ -22,8 +22,10 @@
 <script src="gameEngine4.js"></script>
 
 <!-- GAME SPECIFIC INCLUDES -->
-<script src="game0Data.js"></script>
-<script src="scene3cSelectData.js"></script>
+<script src="endlessData.js"></script>
+<script src="startMenu.js"></script>
+<script src="ingameMenu.js"></script>
+
 
 <!-- DEFINE LEFT DIV TAG - FOR DEBUG PRINTOUTS -->
 <div id="debugContainer">
@@ -42,6 +44,7 @@
 //----------------------------------------------------------------------//
 // THE MAIN CODE FOR THE GAME
 //----------------------------------------------------------------------//
+
 var boxGeo = new THREE.BoxGeometry(2,2,2);
 var boxMat = new THREE.MeshLambertMaterial();
 boxMat.color = new THREE.Color(1,0,0);
@@ -52,6 +55,7 @@ var ys = 0;
 var x = 0;
 var score = 0;
 var scenes = {};
+
 window.onload = function()
 {
 	// Initialize the engine
@@ -74,34 +78,44 @@ window.onload = function()
 	parseScene(level0); // upfront loaded Javscript object
 	//loadScene("scene0a.json"); // asynchronous loading of JSON
 	scenes["level0"] = gameState.scene;
+	scenes["level1"] = parseSceneRtn(level1);
+	scenes["menu"] = parseSceneRtn(menu);
 	startGameLoop();
 }
 
-//----------------------------------------------------------------------//
-// EVENT HANDLERS
-//----------------------------------------------------------------------//
+
+
+// Data Scripts and Controllers //
 var select = function(sceneNode) {
     if (sceneNode.userData["select"] == true) {
-        var data = sceneNode.userData["text"];
-        debug(data);
+        var sScene = sceneNode.userData["scene"];
+        debug(sScene);
         sceneNode.userData["select"] = false;
-		changeScene(level1)
+		changeScene(sScene);
     }
 }
+var sceneControl = function(node) {
+    if (!gameState.lost) {
+        var player = gameState.scene.getObjectByName("Player", true);
+        var cam = gameState.scene.getObjectByName("camera1", true);
+        var background = gameState.scene.getObjectByName("theCube", true);
+        player.position.x = player.position.x + xs;
+        cam.position.x = cam.position.x + xs;
+        player.position.y = player.position.y + ys;
+        cam.position.y = cam.position.y + ys;
+        background.position.x = background.position.x + xs;
 
-var changeScene = function(level) {
-    debug("test");
-    if (scenes[level.userData.name]) {
-        gameState.scene = scenes[level.userData.name];
-	} else {
-        parseScene(level);
-        scenes[level.userData.name] = gameState.scene;
+        if (player.position.x >= nex - 4) {
+            newRandom();
+        }
+        checkPost(player);
     }
-
-	debug(scenes[level.userData.name].userData.camera);
-    gameState.camera = gameState.scene.getObjectByName(scenes[level.userData.name].userData.camera, true);
+}
+var menuControl = function(node) {
 
 }
+
+//Input //
 
 var onMouseDown = function(event)
 {
@@ -118,6 +132,70 @@ var onMouseDown = function(event)
         intersected[0].object.userData["select"] = true;
     }
 }
+
+var onClick = function(event)
+{
+    //var scoreboard = document.getElementById("scoreboard");
+}
+
+var onMouseMove = function(event)
+{
+    //var scoreboard = document.getElementById("scoreboard");
+    //var s = "Move: " + event.clientX + ", " + event.clientY;
+    //scoreboard.innerHTML = s;
+}
+
+var onKeyUp = function(event){
+    var key = event.keyCode ? event.keyCode : event.which;
+    if (key == 37) {
+        //left
+        xs = 0;
+    } else if (key == 39) {
+        //right
+        xs = 0;
+    } else if (key == 38) {
+        //up
+        ys = 0;
+    } else if (key == 40) {
+        //down
+    }
+}
+
+var onKeyDown = function(event)
+{
+    var key = event.keyCode ? event.keyCode : event.which;
+    if (key == 37) {
+        //left
+        xs = -.1;
+    } else if (key == 39) {
+        //right
+        xs = .1;
+    } else if (key == 38) {
+        //up
+        ys = 1
+    } else if (key == 40) {
+        //down
+    } else if (key == 46) {
+        //delete
+        changeScene(gameState.scene.userData.esc);
+    }
+}
+
+var changeScene = function(level) {
+    debug(level);
+    if (scenes[level]) {
+        gameState.scene = scenes[level];
+	} else {
+        parseScene(level);
+        scenes[level] = gameState.scene;
+    }
+
+	debug(scenes[level].userData.camera);
+    gameState.camera = gameState.scene.getObjectByName(scenes[level].userData.camera, true);
+
+}
+
+//Raycast Input//
 
 // params:
 // clientX, clientY - the screen coordinates (event.clientX)
@@ -146,71 +224,6 @@ var rayCastSelect = function(clientX, clientY, canvas, camera, objects)
     var intersects = raycaster.intersectObjects(objects);
     return intersects;
 }
-var onClick = function(event)
-{
-	//var scoreboard = document.getElementById("scoreboard");
-}
-
-var onMouseMove = function(event)
-{
-	//var scoreboard = document.getElementById("scoreboard");
-	//var s = "Move: " + event.clientX + ", " + event.clientY;
-	//scoreboard.innerHTML = s;
-}
-
-var onKeyUp = function(event){
-    var key = event.keyCode ? event.keyCode : event.which;
-    if (key == 37) {
-        //left
-        xs = 0;
-    } else if (key == 39) {
-        //right
-        xs = 0;
-    } else if (key == 38) {
-        //up
-		ys = 0;
-    } else if (key == 40) {
-        //down
-    }
-}
-
-var onKeyDown = function(event)
-{
-	var key = event.keyCode ? event.keyCode : event.which;
-	if (key == 37) {
-		//left
-  		xs = -.1;
-	} else if (key == 39) {
-		//right
-  		xs = .1;
-	} else if (key == 38) {
-		//up
-		ys = 1
-	} else if (key == 40) {
-	    //down
-	} else if (key == 46) {
-	    //delete
-	    changeScene(level0);
-	}
-}
-
-var sceneControl = function(node) {
-    if (!gameState.lost) {
-        var player = gameState.scene.getObjectByName("Player", true);
-        var cam = gameState.scene.getObjectByName("camera1", true);
-        var background = gameState.scene.getObjectByName("theCube", true);
-        player.position.x = player.position.x + xs;
-        cam.position.x = cam.position.x + xs;
-        player.position.y = player.position.y + ys;
-        cam.position.y = cam.position.y + ys;
-        background.position.x = background.position.x + xs;
-
-        if (player.position.x >= nex - 4) {
-            newRandom();
-        }
-        checkPost(player);
-    }
-}
 
 var checkPost = function(P) {
        var pv = new THREE.Vector3(P.position.x, P.position.y, P.position.z);
@@ -222,6 +235,8 @@ var checkPost = function(P) {
                 }
         }
 }
+
+// Generation //
 
 var newRandom = function() {
     var scene = gameState.scene;

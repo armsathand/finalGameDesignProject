@@ -8,7 +8,8 @@ var level1 =
 {
     "name": "level1",
 	"scripts": ["sceneControl"],
-    "camera": "camera1"
+    "camera": "camera1",
+    "esc": "menu"
 },
 
 "children":
@@ -19,7 +20,7 @@ var level1 =
 		"name": "Player",
 		"geometry": "sphere",
 		"scale": [1,1,1],
-		"translate": [0,0,0],
+		"translate": [0,2,0],
 		"material":
 			{
             "type": "meshLambertMaterial",
@@ -27,6 +28,20 @@ var level1 =
             "diffuseColor": [0, 1, .05],
         	}
 	},
+    {
+        "COMMENT": "Start Area",
+        "type": "mesh",
+        "name": "start",
+        "geometry": "cube",
+        "scale": [2.5,1,1],
+        "translate": [2.5,0,0],
+        "material":
+            {
+                "type": "meshLambertMaterial",
+                "name": "cubeMat",
+                "diffuseColor": [1, 0, 0],
+            }
+    },
 	{
 		"COMMENT": "CAMERA LOOKING AT ORIGIN FROM ALONG THE Z AXIS",
 		"type": "perspectiveCamera",
