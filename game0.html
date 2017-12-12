@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<!-- HTML HEAD ELEMENT - DEFINES CSS FOR THE PAGE -->
+<head>
+	<meta charset="utf-8">
+    <style>
+	    body { background-color: #002200; }
+	    h3,p { color: #FFFF00; }
+	    canvas { background-color: #000044; }
+	    #debugContainer { color: #FFFFFF; position: absolute; z-index: 100;}
+    </style>
+    <title>Finale</title>
+</head>
+
+<!-- ==================================================================== -->
+
+<!-- HTML BODY TAG - DEFINES THE HTML LAYOUT FOR THE PAGE -->
+<body oncontextmenu="return false;">
+
+<!-- INCLUDE SCRIPTS -->
+<script src="../threejs/build/three.js"></script>
+<script src="gameEngine4.js"></script>
+
+<!-- GAME SPECIFIC INCLUDES -->
+<script src="game0Data.js"></script>
+<script src="scene3cSelectData.js"></script>
+
+<!-- DEFINE LEFT DIV TAG - FOR DEBUG PRINTOUTS -->
+<div id="debugContainer">
+<pre id="debug"></pre>
+</div>
+
+<!-- MAKE CANVAS AND OTHER STARTING ELEMENTS  -->
+<center>
+	<br/>
+	<canvas id="gameCanvas" width="600" height="400"></canvas>
+	<h3 id="scoreboard">scoreboard</h3>
+</center>
+
+
+<script>
+//----------------------------------------------------------------------//
+// THE MAIN CODE FOR THE GAME
+//----------------------------------------------------------------------//
+var boxGeo = new THREE.BoxGeometry(2,2,2);
+var boxMat = new THREE.MeshLambertMaterial();
+boxMat.color = new THREE.Color(1,0,0);
+var nex = 0;
+var zs = 0;
+var xs = 0;
+var ys = 0;
+var x = 0;
+var score = 0;
+var scenes = {};
+window.onload = function()
+{
+	// Initialize the engine
+	engine.DEBUG = true;
+	var canvas = document.getElementById("gameCanvas");
+
+	canvas.width = window.screen.width -100;
+	canvas.height = window.screen.height -100;
+
+	initEngine(canvas);
+
+	// Set up any event-based input for the current gameState
+	gameState.onMouseMove = onMouseMove;
+	gameState.onMouseDown = onMouseDown;
+	gameState.onClick = onClick;
+	gameState.onKeyDown = onKeyDown;
+	gameState.onKeyUp = onKeyUp;
+	gameState.score = 0;
+	// Parse level0 (into a Three.js scene) and star the game loop
+	parseScene(level0); // upfront loaded Javscript object
+	//loadScene("scene0a.json"); // asynchronous loading of JSON
+	scenes["level0"] = gameState.scene;
+	startGameLoop();
+}
+
+//----------------------------------------------------------------------//
+// EVENT HANDLERS
+//----------------------------------------------------------------------//
+var select = function(sceneNode) {
+    if (sceneNode.userData["select"] == true) {
+        var data = sceneNode.userData["text"];
+        debug(data);
+        sceneNode.userData["select"] = false;
+		changeScene(level1)
+    }
+}
+
+var changeScene = function(level) {
+    debug("test");
+    if (scenes[level.userData.name]) {
+        gameState.scene = scenes[level.userData.name];
+	} else {
+        parseScene(level);
+        scenes[level.userData.name] = gameState.scene;
+    }
+
+	debug(scenes[level.userData.name].userData.camera);
+    gameState.camera = gameState.scene.getObjectByName(scenes[level.userData.name].userData.camera, true);
+
+}
+
+var onMouseDown = function(event)
+{
+    var clientX = event.clientX;
+    var clientY = event.clientY;
+    var canvas = engine.canvas;
+    var camera = gameState.camera;
+    var objects = gameState.scene.children;
+
+    var intersected = rayCastSelect(clientX, clientY, canvas, camera, objects);
+    //debug("length " + intersected.length);
+
+    if (intersected.length > 0) {
+        intersected[0].object.userData["select"] = true;
+    }
+}
+
+// params:
+// clientX, clientY - the screen coordinates (event.clientX)
+// canvas - the canvas where we are drawing
+// camera - the camera we are viewing the scene through
+// objects - the list of objects to cast against (children of root)
+
+var rayCastSelect = function(clientX, clientY, canvas, camera, objects)
+{
+    // Get the position on the screen in "normalized" device coordinates.
+    var rect = canvas.getBoundingClientRect();
+    var mx = clientX - rect.left;
+    var my = canvas.height - (clientY - rect.top);
+    var vector = new THREE.Vector3(
+        2*(mx / canvas.width) - 1,
+        2*(my / canvas.height) - 1,
+        0.5);
+
+    // Get the direction in space to that position in the current camera.
+    vector = vector.unproject(camera);
+    var direction = vector.sub(camera.position).normalize();
+    //debug(direction.x + " " + direction.y + " " + direction.z);
+
+    // Create a Raycaster object and intersect against the objects
+    var raycaster = new THREE.Raycaster(camera.position, direction);
+    var intersects = raycaster.intersectObjects(objects);
+    return intersects;
+}
+var onClick = function(event)
+{
+	//var scoreboard = document.getElementById("scoreboard");
+}
+
+var onMouseMove = function(event)
+{
+	//var scoreboard = document.getElementById("scoreboard");
+	//var s = "Move: " + event.clientX + ", " + event.clientY;
+	//scoreboard.innerHTML = s;
+}
+
+var onKeyUp = function(event){
+    var key = event.keyCode ? event.keyCode : event.which;
+    if (key == 37) {
+        //left
+        xs = 0;
+    } else if (key == 39) {
+        //right
+        xs = 0;
+    } else if (key == 38) {
+        //up
+		ys = 0;
+    } else if (key == 40) {
+        //down
+    }
+}
+
+var onKeyDown = function(event)
+{
+	var key = event.keyCode ? event.keyCode : event.which;
+	if (key == 37) {
+		//left
+  		xs = -.1;
+	} else if (key == 39) {
+		//right
+  		xs = .1;
+	} else if (key == 38) {
+		//up
+		ys = 1
+	} else if (key == 40) {
+	    //down
+	} else if (key == 46) {
+	    //delete
+	    changeScene(level0);
+	}
+}
+
+var sceneControl = function(node) {
+    if (!gameState.lost) {
+        var player = gameState.scene.getObjectByName("Player", true);
+        var cam = gameState.scene.getObjectByName("camera1", true);
+        var background = gameState.scene.getObjectByName("theCube", true);
+        player.position.x = player.position.x + xs;
+        cam.position.x = cam.position.x + xs;
+        player.position.y = player.position.y + ys;
+        cam.position.y = cam.position.y + ys;
+        background.position.x = background.position.x + xs;
+
+        if (player.position.x >= nex - 4) {
+            newRandom();
+        }
+        checkPost(player);
+    }
+}
+
+var checkPost = function(P) {
+       var pv = new THREE.Vector3(P.position.x, P.position.y, P.position.z);
+            var ray = new THREE.Raycaster(pv, new THREE.Vector3(0,0,1));
+            var inter = ray.intersectObjects(gameState.scene.children);
+            if (inter.length > 0) {
+                if (inter[0].distance < 3 && inter[0].object.id != "13" && inter[0].object.id != "7" && inter[0].object.id != "22" && inter[0].object.id != "14") {
+                    //gameState.lost = true;
+                }
+        }
+}
+
+var newRandom = function() {
+    var scene = gameState.scene;
+    var center = scene.getObjectByName("Player", true);
+    var z = 0;
+    var y = Math.round(center.position.y) - (Math.round(Math.random() * 4) - 2);
+    var x = center.position.x + 5;
+    nex = x + 1;
+        newObj(x,y,z,1,1,1);
+}
+
+var newObj = function(x,y,z,tx,ty,tz){
+	var newObj = new THREE.Mesh(boxGeo, boxMat);
+	gameState.scene.add(newObj);
+	newObj.position.x = x;
+	newObj.position.y = y;
+	newObj.position.z = z;
+	newObj.scale.set(tx,ty,tz);
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { background-color: #002200; }
+        h3,p { color: #FFFF00; }
+        canvas { background-color: #000044; }
+        #debugContainer { color: #FFFFFF; position: absolute; z-index: 100;}
+    </style>
+    <title>Final</title>
+</head>
+
+<body oncontextmenu="return false;">
+<audio id="audio">
+    <source src="01%20Sound%20&%20Color.mp3" type="audio/mpeg">
+</audio>
+<script src="../threejs/build/three.js"></script>
+<script src="../threejs/examples/js/loaders/OBJLoader.js"></script
+<script type="text/javascript" src="../Physijs-master/physi.js"></script>
+<script type="text/javascript" src="../Physijs-master/examples/js/stats.js"></script>
+<script src="gameEngine4.js"></script>
+
+<script src="../threejs/examples/js/shaders/CopyShader.js"></script>
+<script src="../threejs/examples/js/shaders/DigitalGlitch.js"></script>
+<script src="../threejs/examples/js/shaders/DotScreenShader.js"></script>
+<script src="../threejs/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="../threejs/examples/js/postprocessing/RenderPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/DotScreenPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/GlitchPass.js"></script>
+<script src="../threejs/examples/js/postprocessing/ShaderPass.js"></script>
+
+<script src="physjsData.js"></script>
+
+<div id="debugContainer">
+    <pre id="debug"></pre>
+</div>
+<center>
+    <br/>
+    <canvas id="gameCanvas" width="1000" height="600"></canvas> <br/>
+    <br/>
+</center>
+
+
+<script>
+    Physijs.scripts.worker = '../Physijs-master/physijs_worker.js';
+    Physijs.scripts.ammo = '../Physijs-master/examples/js/ammo.js';
+    window.onload = function()
+    {
+        // Initialize the engine
+        engine.DEBUG = false;
+        render_stats = new Stats();
+        render_stats.domElement.style.position = 'absolute';
+        render_stats.domElement.style.top = '1px';
+        render_stats.domElement.style.zIndex = 100;
+        var viewport = document.getElementById( 'viewport' );
+        viewport.appendChild( render_stats.domElement );
+        var audio = document.getElementById("myAudio");
+        var canvas = document.getElementById("gameCanvas");
+        initEngine(canvas);
+        // Parse level0 (into a Three.js scene) and star the game loop
+        parseScene(room0); // upfront loaded Javscript object
+        //loadScene("scene0a.json"); // asynchronous loading of JSON
+        gameState.onMouseDown = onMouseDown;
+        scene = new Physijs.Scene;
+        scene.setGravity(new THREE.Vector3( 0, -30, 0 ));
+        startGameLoop();
+    }
+
+    var sceneControl = function(node) {
+
+        render_stats.update();
+        scene.simulate();
+    }
+
+</script>
+</body>
+</html>
